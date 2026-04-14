@@ -1,0 +1,24 @@
+[project]
+name = "mtree"
+version = "0.1.0"
+description = "Minimum-spanning-tree (TMAP) plots of SMILES files"
+readme = "README.md"
+requires-python = "==3.10.*"
+dependencies = [
+    "typer",
+    "rdkit",
+    "tmap-viz",
+    "mhfp",
+    "matplotlib",
+    "numpy<2",
+]
+
+[project.scripts]
+mtree = "mtree.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["mtree"]
