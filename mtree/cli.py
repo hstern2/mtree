@@ -89,7 +89,17 @@ def main(
 
     if dark:
         plt.style.use("dark_background")
-    fig, ax = plt.subplots(figsize=(10, 10))
+    fig = plt.figure(figsize=(12, 8))
+    ax = fig.add_axes([0.03, 0.03, 0.80, 0.94])
+    lax = fig.add_axes([0.85, 0.03, 0.13, 0.94])
+    lax.axis("off")
+    frame_color = "#cccccc" if not dark else "#555555"
+    for spine in ax.spines.values():
+        spine.set_visible(True)
+        spine.set_color(frame_color)
+        spine.set_linewidth(0.8)
+    ax.set_xticks([])
+    ax.set_yticks([])
 
     segs = np.stack(
         [np.column_stack([x[s], y[s]]), np.column_stack([x[t], y[t]])],
@@ -118,24 +128,23 @@ def main(
             zorder=2,
         )
 
-    ax.set_aspect("equal")
-    ax.axis("off")
+    ax.set_aspect("auto")
     if title:
         ax.set_title(title)
-    ax.legend(
+    handles, labels_ = ax.get_legend_handles_labels()
+    lax.legend(
+        handles,
+        labels_,
         loc="upper left",
-        bbox_to_anchor=(1.02, 1.0),
         frameon=True,
         markerscale=1.5,
-        borderaxespad=0.0,
     )
 
-    pad = 0.02 * (x.max() - x.min() + 1e-9)
+    pad = 0.02 * max(x.max() - x.min(), y.max() - y.min(), 1e-9)
     ax.set_xlim(x.min() - pad, x.max() + pad)
     ax.set_ylim(y.min() - pad, y.max() + pad)
 
-    fig.tight_layout()
-    fig.savefig(output, dpi=dpi, bbox_inches="tight")
+    fig.savefig(output, dpi=dpi)
     typer.echo(f"Wrote {output}")
 
 
