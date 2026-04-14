@@ -113,8 +113,15 @@ def main(
     )
 
     unique = sorted(dict.fromkeys(labels))
-    cmap = colormaps["tab10" if len(unique) <= 10 else "tab20"]
-    colors = {lab: cmap(i % cmap.N) for i, lab in enumerate(unique)}
+    n = len(unique)
+    if n <= 10:
+        palette = [colormaps["tab10"](i) for i in range(n)]
+    elif n <= 20:
+        palette = [colormaps["tab20"](i) for i in range(n)]
+    else:
+        hsv = colormaps["hsv"]
+        palette = [hsv(i / n) for i in range(n)]
+    colors = {lab: palette[i] for i, lab in enumerate(unique)}
     labels_arr = np.array(labels)
     for lab in unique:
         idx = np.where(labels_arr == lab)[0]
