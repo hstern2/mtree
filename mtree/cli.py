@@ -107,13 +107,60 @@ def plot(
     output: Path = typer.Option(
         Path("mtree.png"), "-o", "--output", help="Output PNG path."
     ),
-    node_diameter: float = typer.Option(5.0, "--node-diameter", help="Scatter marker diameter in typographic points (1 point = 1/72 inch, a physical length independent of DPI)."),
-    node_alpha: float = typer.Option(0.7, "--node-alpha", help="Scatter marker opacity (0 = fully transparent, 1 = opaque)."),
+    diameter: List[str] = typer.Option(
+        [],
+        "-d",
+        "--diameter",
+        help="Scatter marker diameter in typographic points (1 point = 1/72 inch). Pass a bare number or ALL=VALUE to set the default, or LABEL=VALUE to override one dataset. Repeatable. Default 5.",
+    ),
+    alpha: List[str] = typer.Option(
+        [],
+        "-a",
+        "--alpha",
+        help="Scatter marker opacity (0 = transparent, 1 = opaque). Same form as --diameter. Default 0.7.",
+    ),
+    marker: List[str] = typer.Option(
+        [],
+        "-m",
+        "--marker",
+        help="Marker symbol. Pass ALL=SYMBOL to set the default, or LABEL=SYMBOL to override one dataset. Repeatable. Default 'o'.",
+    ),
     edge_width: float = typer.Option(0.4, "--edge-width", help="MST edge linewidth."),
     dpi: int = typer.Option(200, "--dpi", help="Output DPI."),
     dark: bool = typer.Option(False, "--dark/--light", help="Dark (faerun-style) background."),
     title: Optional[str] = typer.Option(None, "--title", help="Optional figure title."),
 ):
+    def _parse(flag, specs, default, cast, allow_bare):
+        d = default
+        overrides: dict = {}
+        for spec in specs:
+            if "=" in spec:
+                lab, val = spec.split("=", 1)
+                lab = lab.strip()
+                try:
+                    parsed = cast(val.strip())
+                except ValueError:
+                    typer.echo(f"error: {flag} value for {lab!r} is invalid: {val!r}", err=True)
+                    raise typer.Exit(code=1)
+                if lab == "ALL":
+                    d = parsed
+                else:
+                    overrides[lab] = parsed
+            elif allow_bare:
+                try:
+                    d = cast(spec)
+                except ValueError:
+                    typer.echo(f"error: {flag} expects VALUE, ALL=VALUE, or LABEL=VALUE, got {spec!r}", err=True)
+                    raise typer.Exit(code=1)
+            else:
+                typer.echo(f"error: {flag} expects ALL=VALUE or LABEL=VALUE, got {spec!r}", err=True)
+                raise typer.Exit(code=1)
+        return d, overrides
+
+    default_diameter, diameters = _parse("--diameter", diameter, 5.0, float, allow_bare=True)
+    default_alpha, alphas = _parse("--alpha", alpha, 0.7, float, allow_bare=True)
+    default_marker, markers = _parse("--marker", marker, "o", str, allow_bare=False)
+
     data = np.load(layout, allow_pickle=False)
     x = data["x"]
     y = data["y"]
@@ -158,14 +205,16 @@ def plot(
     colors = {lab: palette[i] for i, lab in enumerate(unique)}
     for lab in unique:
         idx = np.where(labels_arr == lab)[0]
+        dia = diameters.get(lab, default_diameter)
         ax.scatter(
             x[idx],
             y[idx],
-            s=node_diameter ** 2,
+            s=dia ** 2,
             color=[colors[lab]],
             label=lab,
+            marker=markers.get(lab, default_marker),
             edgecolors="none",
-            alpha=node_alpha,
+            alpha=alphas.get(lab, default_alpha),
             zorder=2,
         )
 
