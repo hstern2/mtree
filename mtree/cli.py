@@ -48,6 +48,7 @@ def main(
     ),
     k: int = typer.Option(20, "-k", "--k", help="kNN used by the TMAP layout."),
     node_diameter: float = typer.Option(5.0, "--node-diameter", help="Scatter marker diameter in typographic points (1 point = 1/72 inch, a physical length independent of DPI)."),
+    node_alpha: float = typer.Option(0.7, "--node-alpha", help="Scatter marker opacity (0 = fully transparent, 1 = opaque)."),
     edge_width: float = typer.Option(0.4, "--edge-width", help="MST edge linewidth."),
     dpi: int = typer.Option(200, "--dpi", help="Output DPI."),
     dark: bool = typer.Option(False, "--dark/--light", help="Dark (faerun-style) background."),
@@ -112,7 +113,7 @@ def main(
         )
     )
 
-    unique = sorted(dict.fromkeys(labels))
+    unique = list(dict.fromkeys(labels))
     n = len(unique)
     if n <= 10:
         palette = [colormaps["tab10"](i) for i in range(n)]
@@ -132,6 +133,7 @@ def main(
             color=[colors[lab]],
             label=lab,
             edgecolors="none",
+            alpha=node_alpha,
             zorder=2,
         )
 
