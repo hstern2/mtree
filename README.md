@@ -25,9 +25,23 @@ uv tool install -p 3.10 .
 
 ## Usage
 
+Two subcommands: `build` computes the MST layout (the expensive step:
+fingerprints, LSH forest, TMAP layout) and saves it to an `.npz`; `plot`
+renders a PNG from that `.npz`. Splitting them lets you iterate on the
+visualization without re-running the layout.
+
 ```
-mtree actives.smi decoys.smi library.smi -o tree.png
+mtree build actives.smi decoys.smi library.smi -o tree.npz
+mtree plot tree.npz -o tree.png
 ```
 
-Options: `-o/--output`, `-k/--k` (layout kNN), `--node-size`, `--edge-width`,
-`--dpi`, `--dark/--light`, `--title`. See `uv run mtree --help`.
+Each input file becomes one color/legend entry (labeled by filename stem).
+Groups are plotted in the order given on the command line, so later-listed
+files render on top — list larger sets first so smaller sets aren't
+overdrawn.
+
+`build` options: `-o/--output`, `-k/--k` (layout kNN).
+`plot` options: `-o/--output`, `--node-diameter`, `--node-alpha`,
+`--edge-width`, `--dpi`, `--dark/--light`, `--title`.
+
+See `uv run mtree -h`, `uv run mtree build -h`, `uv run mtree plot -h`.

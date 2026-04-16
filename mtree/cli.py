@@ -34,8 +34,8 @@ def _read_smi(path: Path) -> list[str]:
     return smiles
 
 
-@app.command(help="Minimum-spanning-tree plot of one or more .smi files.")
-def main(
+@app.command("build", help="Compute the MST layout from one or more .smi files and save it to an .npz.")
+def build(
     smi_files: List[Path] = typer.Argument(
         ...,
         exists=True,
@@ -44,15 +44,9 @@ def main(
         help="One or more .smi files; each becomes one color/legend entry.",
     ),
     output: Path = typer.Option(
-        Path("mtree.png"), "-o", "--output", help="Output PNG path."
+        Path("mtree.npz"), "-o", "--output", help="Output .npz layout path."
     ),
     k: int = typer.Option(20, "-k", "--k", help="kNN used by the TMAP layout."),
-    node_diameter: float = typer.Option(5.0, "--node-diameter", help="Scatter marker diameter in typographic points (1 point = 1/72 inch, a physical length independent of DPI)."),
-    node_alpha: float = typer.Option(0.7, "--node-alpha", help="Scatter marker opacity (0 = fully transparent, 1 = opaque)."),
-    edge_width: float = typer.Option(0.4, "--edge-width", help="MST edge linewidth."),
-    dpi: int = typer.Option(200, "--dpi", help="Output DPI."),
-    dark: bool = typer.Option(False, "--dark/--light", help="Dark (faerun-style) background."),
-    title: Optional[str] = typer.Option(None, "--title", help="Optional figure title."),
 ):
     all_smiles: list[str] = []
     labels: list[str] = []
@@ -88,6 +82,46 @@ def main(
     s = np.asarray(list(s), dtype=int)
     t = np.asarray(list(t), dtype=int)
 
+    unique_labels = list(dict.fromkeys(labels))
+    np.savez(
+        output,
+        x=x,
+        y=y,
+        s=s,
+        t=t,
+        labels=np.asarray(labels),
+        unique_labels=np.asarray(unique_labels),
+    )
+    typer.echo(f"Wrote {output}")
+
+
+@app.command("plot", help="Render an MST plot from a saved layout (.npz).")
+def plot(
+    layout: Path = typer.Argument(
+        ...,
+        exists=True,
+        dir_okay=False,
+        readable=True,
+        help="Layout .npz produced by `mtree build`.",
+    ),
+    output: Path = typer.Option(
+        Path("mtree.png"), "-o", "--output", help="Output PNG path."
+    ),
+    node_diameter: float = typer.Option(5.0, "--node-diameter", help="Scatter marker diameter in typographic points (1 point = 1/72 inch, a physical length independent of DPI)."),
+    node_alpha: float = typer.Option(0.7, "--node-alpha", help="Scatter marker opacity (0 = fully transparent, 1 = opaque)."),
+    edge_width: float = typer.Option(0.4, "--edge-width", help="MST edge linewidth."),
+    dpi: int = typer.Option(200, "--dpi", help="Output DPI."),
+    dark: bool = typer.Option(False, "--dark/--light", help="Dark (faerun-style) background."),
+    title: Optional[str] = typer.Option(None, "--title", help="Optional figure title."),
+):
+    data = np.load(layout, allow_pickle=False)
+    x = data["x"]
+    y = data["y"]
+    s = data["s"]
+    t = data["t"]
+    labels_arr = np.asarray([str(v) for v in data["labels"]])
+    unique = [str(v) for v in data["unique_labels"]]
+
     if dark:
         plt.style.use("dark_background")
     fig = plt.figure(figsize=(12, 8))
@@ -113,7 +147,6 @@ def main(
         )
     )
 
-    unique = list(dict.fromkeys(labels))
     n = len(unique)
     if n <= 10:
         palette = [colormaps["tab10"](i) for i in range(n)]
@@ -123,7 +156,6 @@ def main(
         hsv = colormaps["hsv"]
         palette = [hsv(i / n) for i in range(n)]
     colors = {lab: palette[i] for i, lab in enumerate(unique)}
-    labels_arr = np.array(labels)
     for lab in unique:
         idx = np.where(labels_arr == lab)[0]
         ax.scatter(
