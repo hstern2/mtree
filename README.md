@@ -20,7 +20,7 @@ Globally as a `uv` tool (must pin Python 3.10 — `tmap-viz` has no 3.11 wheel,
 and `uv tool install` ignores the project's `requires-python`):
 
 ```
-uv tool install --python 3.10 .
+uv tool install -p 3.10 .
 ```
 
 ## Usage
