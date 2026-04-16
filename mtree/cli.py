@@ -47,7 +47,7 @@ def main(
         Path("mtree.png"), "-o", "--output", help="Output PNG path."
     ),
     k: int = typer.Option(20, "-k", "--k", help="kNN used by the TMAP layout."),
-    node_size: Optional[float] = typer.Option(None, "--node-size", help="Scatter marker size. Auto-scales with point count if unset."),
+    node_diameter: float = typer.Option(5.0, "--node-diameter", help="Scatter marker diameter in typographic points (1 point = 1/72 inch, a physical length independent of DPI)."),
     edge_width: float = typer.Option(0.4, "--edge-width", help="MST edge linewidth."),
     dpi: int = typer.Option(200, "--dpi", help="Output DPI."),
     dark: bool = typer.Option(False, "--dark/--light", help="Dark (faerun-style) background."),
@@ -68,9 +68,6 @@ def main(
         raise typer.Exit(code=1)
 
     typer.echo(f"Loaded {len(all_smiles)} molecules from {len(smi_files)} file(s).")
-
-    if node_size is None:
-        node_size = max(1.0, 6.0 * (300.0 / len(all_smiles)) ** 0.5)
 
     enc = MHFPEncoder(1024)
     fps = [tm.VectorUint(enc.encode(s)) for s in all_smiles]
@@ -131,7 +128,7 @@ def main(
         ax.scatter(
             x[idx],
             y[idx],
-            s=node_size ** 2,
+            s=node_diameter ** 2,
             color=[colors[lab]],
             label=lab,
             edgecolors="none",
