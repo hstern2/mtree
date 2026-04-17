@@ -4,6 +4,7 @@ from typing import List, Optional
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import colormaps
+import matplotlib.colors as mcolors
 from matplotlib.collections import LineCollection
 from rdkit import Chem
 from rdkit import RDLogger
@@ -125,6 +126,12 @@ def plot(
         "--marker",
         help="Marker symbol. Pass ALL=SYMBOL to set the default, or LABEL=SYMBOL to override one dataset. Repeatable. Default 'o'.",
     ),
+    color: List[str] = typer.Option(
+        [],
+        "-c",
+        "--color",
+        help="Color. Pass ALL=COLOR or LABEL=COLOR; a named matplotlib color ('red', 'tab:blue'), hex ('#1f77b4'), etc. Repeatable. Unassigned datasets auto-pick from a palette that excludes any color you've named here. Run `mtree colors` to see names.",
+    ),
     edge_width: float = typer.Option(0.4, "--edge-width", help="MST edge linewidth."),
     dpi: int = typer.Option(200, "--dpi", help="Output DPI."),
     dark: bool = typer.Option(False, "--dark/--light", help="Dark (faerun-style) background."),
@@ -157,9 +164,16 @@ def plot(
                 raise typer.Exit(code=1)
         return d, overrides
 
+    def _cast_color(v):
+        v = v.strip()
+        if not mcolors.is_color_like(v):
+            raise ValueError(v)
+        return v
+
     default_diameter, diameters = _parse("--diameter", diameter, 5.0, float, allow_bare=True)
     default_alpha, alphas = _parse("--alpha", alpha, 0.7, float, allow_bare=True)
     default_marker, markers = _parse("--marker", marker, "o", str, allow_bare=False)
+    default_color, color_overrides = _parse("--color", color, None, _cast_color, allow_bare=False)
 
     data = np.load(layout, allow_pickle=False)
     x = data["x"]
@@ -196,13 +210,36 @@ def plot(
 
     n = len(unique)
     if n <= 10:
-        palette = [colormaps["tab10"](i) for i in range(n)]
+        base_palette = [colormaps["tab10"](i) for i in range(10)]
     elif n <= 20:
-        palette = [colormaps["tab20"](i) for i in range(n)]
+        base_palette = [colormaps["tab20"](i) for i in range(20)]
     else:
         hsv = colormaps["hsv"]
-        palette = [hsv(i / n) for i in range(n)]
-    colors = {lab: palette[i] for i, lab in enumerate(unique)}
+        base_palette = [hsv(i / n) for i in range(n)]
+
+    def _rgba_key(c):
+        return tuple(round(v, 6) for v in mcolors.to_rgba(c))
+
+    reserved = {_rgba_key(v) for v in color_overrides.values()}
+    if default_color is not None:
+        reserved.add(_rgba_key(default_color))
+
+    auto = [c for c in base_palette if _rgba_key(c) not in reserved]
+    needed = sum(1 for lab in unique if lab not in color_overrides and default_color is None)
+    if len(auto) < needed:
+        hsv = colormaps["hsv"]
+        extra = needed - len(auto)
+        auto = list(auto) + [hsv(i / max(extra, 1)) for i in range(extra)]
+    auto_iter = iter(auto)
+
+    colors = {}
+    for lab in unique:
+        if lab in color_overrides:
+            colors[lab] = color_overrides[lab]
+        elif default_color is not None:
+            colors[lab] = default_color
+        else:
+            colors[lab] = next(auto_iter)
     for lab in unique:
         idx = np.where(labels_arr == lab)[0]
         dia = diameters.get(lab, default_diameter)
@@ -236,6 +273,22 @@ def plot(
 
     fig.savefig(output, dpi=dpi)
     typer.echo(f"Wrote {output}")
+
+
+@app.command("colors", help="List named matplotlib colors with terminal swatches.")
+def colors_cmd():
+    groups = [
+        ("BASE", mcolors.BASE_COLORS),
+        ("TABLEAU", mcolors.TABLEAU_COLORS),
+        ("CSS4", mcolors.CSS4_COLORS),
+    ]
+    for title, d in groups:
+        typer.echo(f"\n{title}")
+        for key, val in sorted(d.items()):
+            hx = mcolors.to_hex(val)
+            r, g, b = (int(round(c * 255)) for c in mcolors.to_rgb(val))
+            swatch = f"\x1b[48;2;{r};{g};{b}m    \x1b[0m"
+            typer.echo(f"  {swatch}  {key:<22} {hx}")
 
 
 if __name__ == "__main__":

@@ -41,7 +41,12 @@ files render on top — list larger sets first so smaller sets aren't
 overdrawn.
 
 `build` options: `-o/--output`, `-k/--k` (layout kNN).
-`plot` options: `-o/--output`, `--node-diameter`, `--node-alpha`,
-`--edge-width`, `--dpi`, `--dark/--light`, `--title`.
+`plot` options: `-o/--output`, `-d/--diameter`, `-a/--alpha`, `-m/--marker`,
+`-c/--color`, `--edge-width`, `--dpi`, `--dark/--light`, `--title`.
+
+Per-dataset overrides use `LABEL=VALUE` (e.g. `-c actives=red -m decoys=x`);
+`ALL=VALUE` sets the default. Colors named via `-c` are excluded from the
+auto-palette so other datasets won't be assigned the same color. Run
+`mtree colors` to list named matplotlib colors with terminal swatches.
 
 See `uv run mtree -h`, `uv run mtree build -h`, `uv run mtree plot -h`.
